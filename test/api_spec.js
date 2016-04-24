@@ -119,6 +119,7 @@ describe ('JSON Recipes', function(){
             res.body.should.be.an('object');
             res.body.data.should.be.an('array');
             res.body.data.length.should.be.equal(3);
+            res.body.data[0].title.should.be.equal('Título')
             done();
           });
       });
