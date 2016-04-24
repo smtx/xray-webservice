@@ -2,16 +2,53 @@ var Xray = require('x-ray');
 var xraydriver = require('./x-ray-driver');
 var x = Xray();
 
-function setRegex(obj,regex){
-    if (!regex) return obj;
-    // var data = obj.replace(/["|.]/g,'');
-    var data = obj;
-    if (arrMatches = data.match(regex)){
-        data = arrMatches[1] || arrMatches[0];
+if (!Array.prototype.last){
+    Array.prototype.last = function(){
+        return this[this.length - 1];
+    };
+};
+
+function applyRegex(regex,obj){ // Apply regular expressions to obj
+    if (typeof obj == 'string'){ 
+        // Apply single regexp if obj is a string
+        obj = setRegex(obj,regex);
     } else {
-        data = 0;
+        if (obj){
+            Object.keys(obj).forEach(function(k){                
+                if (typeof obj[k] == 'string'){ 
+                    obj[k] = setRegex(obj[k],regex[k]);                            
+                } else {
+                    // apply regexp to array or object
+                    Object.keys(obj[k]).forEach(function(n){
+                        if( regex[k+'.'+n] ){
+                            // apply regexp to nested object
+                            obj[k][n] = setRegex(obj[k][n],regex[k+'.'+n]);                                                                                    
+                        } else {
+                            // apply regexp to array element
+                            obj[k][n] = setRegex(obj[k][n],regex[k]);                                        
+                        }
+                    });
+                }
+            });
+        }
     }
-    return data;
+    
+    return obj;
+    
+    function setRegex(obj,regex){
+        if (!regex){
+        return obj;  
+        } 
+        var data = obj;
+        // assign first match of regex if possible, zero if no match
+        if (arrMatches = data.match(regex)){
+            data = arrMatches[1] || arrMatches[0];
+        } else {
+            data = 0;
+        }
+        return data;
+    }
+
 }
 
 function scrap(jsonData,cb){
@@ -20,35 +57,28 @@ function scrap(jsonData,cb){
     } else {
         x.driver(xraydriver('utf-8'));
     }
-    x(jsonData.url,jsonData.recipe)(function(err,obj){
-        if (err) {
-            cb(err,obj);
-        } else {
-            if (jsonData.regex){
-                if (typeof obj == 'string'){
-                    obj = setRegex(obj,jsonData.regex);
-                } else {
-                    if (obj){
-                        Object.keys(obj).forEach(function(k){
-                            if (typeof obj[k] == 'string'){
-                                obj[k] = setRegex(obj[k],jsonData.regex[k]);                            
-                            } else {
-                                Object.keys(obj[k]).forEach(function(n){
-                                    if( req.body.regex[k+'.'+n] ){
-                                        obj[k][n] = setRegex(obj[k][n],jsonData.regex[k+'.'+n]);                                                                                    
-                                    } else {
-                                        obj[k][n] = setRegex(obj[k][n],jsonData.regex[k]);                                        
-                                    }
-                                });
-                            }
-                        });
-                    }
+    if (jsonData.paginate!==undefined && jsonData.selector!==undefined){
+        // scrap array of data
+        x(jsonData.url, jsonData.paginate)(function(err, next) {
+            var data;
+            if (err){
+                cb(err,data);
+            }
+            x(jsonData.url, jsonData.selector, [jsonData.recipe])(function(err, obj) {
+                data=obj;
+                cb(err,{data:data,next:next});
+            });               
+        });
+    } else {
+        x(jsonData.url,jsonData.recipe)(function(err,obj){
+            if (!err) {
+                if (jsonData.regex){
+                    obj = applyRegex(jsonData.regex,obj);
                 }
             }
-            cb(err,obj);         
-        }
-        
-    });
+            cb(err,obj);      
+        });        
+    }
 }
 
 module.exports.scrap = scrap
