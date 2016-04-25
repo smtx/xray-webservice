@@ -65,7 +65,7 @@ function scrap(jsonData,cb){
                 cb(err,data);
             }
             x(jsonData.url, jsonData.selector, [jsonData.recipe])(function(err, obj) {
-                data=obj;
+                data=obj.map(function(d){return applyRegex(jsonData.regex,d)});
                 cb(err,{data:data,next:next});
             });               
         });

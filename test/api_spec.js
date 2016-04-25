@@ -9,6 +9,10 @@ var should    = chai.should();
 
 chai.use(chaiHttp);
 
+after(function(){
+  server.close();
+});
+
 describe('Express server is working when...', function(){
     it('responds to /', function(done){
       chai.request(server)
@@ -102,16 +106,30 @@ describe ('JSON Recipes', function(){
       });
 
     });
-    describe('get array data', function(){
+    describe('get array data with regex', function(){
       it('get data as array', function(done){
         chai.request(server)
           .post('/')
           .send({ 
               "url": url,
-              "recipe": {"title":"div.items-info h3","image":"figure.items-image img@data-original","price":"p.items-price","permalink":"a@href"},
+              "recipe": {
+                "title":"div.items-info h3",
+                "image":"figure.items-image img@data-original",
+                "price":"p.items-price",
+                "permalink":"a@href",
+                "seller":{
+                    "name": "a.seller p:nth-child(1)",
+                    "city": "a.seller p:last-child"
+                }
+              },
               "paginate": "footer section#pagination a.next@href",
               "selector": "ul li.item",
-              "limit": 1
+              "limit": 1,
+              "regex": {
+                  "price":"(\\d+,?\\d*\\.?\\d*)",
+                  "seller.name":"Vendedor: (.+)",
+                  "seller.city":"Ciudad: (.+)"
+              }
           })
           .end(function(err, res){
             res.should.have.status(200);
@@ -119,7 +137,12 @@ describe ('JSON Recipes', function(){
             res.body.should.be.an('object');
             res.body.data.should.be.an('array');
             res.body.data.length.should.be.equal(3);
-            res.body.data[0].title.should.be.equal('IPAD MINI 16gb SILVER IMPECABLE CONDICION')
+            res.body.data[0].title.should.be.equal('IPAD MINI 16gb SILVER IMPECABLE CONDICION');
+            res.body.data[0].image.should.be.equal('http://lorempixel.com/135/180/');
+            should.exist(res.body.data[0].seller);
+            res.body.data[0].seller.should.be.an('object');
+            res.body.data[0].seller.name.should.be.equal("Juan Perez");
+            res.body.data[0].seller.city.should.be.equal("Córdoba");
             done();
           });
       });
@@ -152,6 +175,7 @@ describe ('JSON Recipes', function(){
             res.body.title.should.be.equal("Título del artículo");
             res.body.image.should.be.equal("http://lorempixel.com/400/200/");
             res.body.price.should.be.equal("10,333.23");
+            res.body.seller.should.exist;
             res.body.seller.should.be.an('object');
             res.body.seller.name.should.be.equal("Sebastián Ríos");
             res.body.seller.city.should.be.equal("San Martín de los Andes");
