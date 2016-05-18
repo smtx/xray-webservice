@@ -1,11 +1,20 @@
 
-var url       = 'http://smtx.github.io/tests/xray/static.html';
-var url2      = 'http://smtx.github.io/tests/xray/static.iso8859.html';
+var url       = 'http://localhost:8889/static.html';
+var url2      = 'http://localhost:8889/static.iso8859.html';
+var dynamic_url = 'http://localhost:8889/dynamic.html';
 
 var chai      = require('chai');
 var chaiHttp  = require('chai-http');
-var server    = require('../index');
+var app    = require('../index');
 var should    = chai.should();
+var express = require('express');
+
+// serve static content for API testing
+app.use(express.static('test/static'));
+var server = app.listen(8889, function () {
+  var port = server.address().port;
+  console.log('Example app listening at port %s', port);
+});
 
 chai.use(chaiHttp);
 
@@ -101,8 +110,8 @@ describe ('JSON Recipes', function(){
             res.body.seller.should.be.an('object');
             res.body.seller.name.should.be.equal("Sebastián Ríos");
             res.body.seller.city.should.be.equal("San Martín de los Andes");
+            done();
         });
-        done();
       });
 
     });
@@ -146,21 +155,24 @@ describe ('JSON Recipes', function(){
             done();
           });
       });
-      xit('get transform data with regex', function(done){
-        pending();
+      it('get transform data with regex', function(done){
         chai.request(server)
           .post('/')
           .send({ 
             "url": url2,
             "recipe": {
-                "title":"section#article h3",
-                "image":"section#article img@src",
-                "price":"div.price",
-                "seller":{
-                    "name": "a.seller p:nth-child(1)",
-                    "city": "a.seller p:last-child"
-                }
+              "title":"div.items-info h3",
+              "image":"figure.items-image img@data-original",
+              "price":"p.items-price",
+              "permalink":"a@href",
+              "seller":{
+                  "name": "a.seller p:nth-child(1)",
+                  "city": "a.seller p:last-child"
+              }
             },
+            "paginate": "footer section#pagination a.next@href",
+            "selector": "ul li.item",
+            "limit": 1,
             "regex": {
                 "price":"(\\d+,?\\d*\\.?\\d*)",
                 "seller.name":"Vendedor: (.+)",
@@ -172,19 +184,86 @@ describe ('JSON Recipes', function(){
             res.should.have.status(200);
             res.should.be.json;
             res.body.should.be.an('object');
-            res.body.title.should.be.equal("Título del artículo");
-            res.body.image.should.be.equal("http://lorempixel.com/400/200/");
-            res.body.price.should.be.equal("10,333.23");
-            res.body.seller.should.exist;
-            res.body.seller.should.be.an('object');
-            res.body.seller.name.should.be.equal("Sebastián Ríos");
-            res.body.seller.city.should.be.equal("San Martín de los Andes");
+            res.body.data.should.be.an('array');
+            res.body.data.length.should.be.equal(3);
+            res.body.data[0].title.should.be.equal("IPAD MINI 16gb SILVER IMPECABLE CONDICION");
+            res.body.data[0].image.should.be.equal("http://lorempixel.com/135/180/");
+            res.body.data[0].price.should.be.equal("3.500");
+            res.body.data[0].seller.should.exist;
+            res.body.data[0].seller.should.be.an('object');
+            res.body.data[0].seller.name.should.be.equal("Juan Perez");
+            res.body.data[0].seller.city.should.be.equal("Códoba");
+            done();        
         });
-        done();        
       });
-      it('get ajax data');
-      it('get transform ajax data with regex');
-      it('get data with correct charset');
+      it('not get ajax data without wait', function(done){
+        chai.request(server)
+          .post('/')
+          .send({ 
+            "url": dynamic_url,
+            "recipe": {
+              "title":"div.items-info h3",
+              "image":"figure.items-image img@data-original",
+              "price":"p.items-price",
+              "permalink":"a@href",
+              "seller":{
+                  "name": "a.seller p:nth-child(1)",
+                  "city": "a.seller p:last-child"
+              }
+            },
+            "paginate": "footer section#pagination a.next@href",
+            "selector": "ul.dynamic-list li.item",
+            "limit": 1,
+            "regex": {
+                "price":"(\\d+,?\\d*\\.?\\d*)",
+                "seller.name":"Vendedor: (.+)",
+                "seller.city":"Ciudad: (.+)"
+            }
+        })
+        .end(function(err,res){
+            res.should.have.status(200);
+            res.should.be.json;
+            res.body.should.be.an('object');
+            res.body.data.should.be.an('array');
+            res.body.data.length.should.be.equal(0);
+            done();        
+        });        
+      });
+      it.only('get ajax data', function(done){
+        chai.request(server)
+          .post('/')
+          .send({ 
+            "url": dynamic_url,
+            "recipe": {
+              "title":"div.items-info h3",
+              "image":"figure.items-image img@data-original",
+              "price":"p.items-price",
+              "permalink":"a@href",
+              "seller":{
+                  "name": "a.seller p:nth-child(1)",
+                  "city": "a.seller p:last-child"
+              }
+            },
+            "paginate": "footer section#pagination a.next@href",
+            "selector": "ul.dynamic-list li.item",
+            "limit": 1,
+            "wait": 1,
+            "nightmare": 'http://nightmarelb.demo.pulpou.ujo.website:8889/source',
+            "regex": {
+                "price":"(\\d+,?\\d*\\.?\\d*)",
+                "seller.name":"Vendedor: (.+)",
+                "seller.city":"Ciudad: (.+)"
+            }
+        })
+        .end(function(err,res){
+            res.should.have.status(200);
+            res.should.be.json;
+            res.body.should.be.an('object');
+            res.body.data.should.be.an('array');
+            res.body.data.length.should.be.equal(3);
+            done();        
+        });        
+      });
       it('get data from XML document');
     });
   });

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>This is the title</title>
+</head>
+<body>
+    <h1>This is a heading</h3>
+    <section id="article">
+        <h3>Article title</h3>
+        <img src="http://lorempixel.com/400/200/" alt="">
+        <p>This is a description</p>
+        <div class="price">$ 10,333.23 (12x) original price: 15,344</div>
+        <a class="seller" href="?seller=seba">
+            <p>Vendedor: Sebastián Ríos</p>
+            <p>Descripcion sin importancia del seller</p>
+            <p>Ciudad: San Martín de los Andes</p>
+        </a>
+    </section>
+    <ul id="dynamic-list">
+    </ul>
+  <footer>
+      <section id="pagination">
+          <a href="?page=2" class="next">SIGUIENTE</a>
+      </section>
+  </footer>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.3/jquery.min.js"></script>
+  <script>
+      $( document ).ready(function() {
+        setTimeout(function(){$( "#dynamic-list" ).load( "dynamic.content.html" )},5000);
+      });
+      
+  </script>
+</body>
+</html>
