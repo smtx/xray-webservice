@@ -229,7 +229,7 @@ describe ('JSON Recipes', function(){
             done();        
         });        
       });
-      it.only('get ajax data', function(done){
+      xit('get ajax data', function(done){
         chai.request(server)
           .post('/')
           .send({ 

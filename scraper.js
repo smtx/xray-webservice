@@ -72,6 +72,15 @@ function scrap(jsonData,cb){
     
     
     var doScrap = function(){
+        const MAX_ERROR_COUNT = 50;
+        const MAX_ERROR_COUNT_FOR_ARTICLE = 1;
+        
+         var errorsInKeys = JSON.parse(JSON.stringify(jsonData.recipe));
+         var keysInRecipe = Object.keys(jsonData.recipe);
+         for(var prop in errorsInKeys){
+             errorsInKeys[prop] = 0;
+         }
+        
         // if xml flag exists, switch cheerio to admit XML special elements CDATA, etc.
         if (jsonData.xml){
             cheerio.prototype.options.xmlMode = true;
@@ -94,6 +103,51 @@ function scrap(jsonData,cb){
                 x(newUrl, jsonData.selector, [jsonData.recipe])(function(err, obj) {
                     data=obj.map(function(d){return applyRegex(jsonData.regex,d)});
                     cb(err,{data:data,next:next});
+                    var b;
+                    for(var a in data){
+                        for(var c = 0; c < keysInRecipe.length; c++){
+                            var count = 0;
+                            if(a != 'last'){
+                                if(!data[a].hasOwnProperty(keysInRecipe[c]))
+                                {
+                                    count++;
+                                    errorsInKeys[keysInRecipe[c]] += count;
+                                    if(errorsInKeys[keysInRecipe[c]] >= MAX_ERROR_COUNT)
+                                    {
+                                        b = true;
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                    if(bot && b)
+                    {
+                        var fields = [];
+                        for (var property in errorsInKeys) {
+                            if (errorsInKeys.hasOwnProperty(property) && errorsInKeys[property] >= MAX_ERROR_COUNT) {
+                                var field = {};
+                                field.value = 'Errores: ' + errorsInKeys[property];
+                                field.title = 'Propiedad: ' + property;
+                                fields.push(field);
+                            }
+                        }
+                        bot.postMessageToGroup('pulpou-notifications', "<@eliseoci>", {
+                            "attachments": [
+                                {
+                                    "fallback": "Info no capturada en receta.",
+                                    "color": 'danger',
+                                    "pretext":"Info no capturada en recipe LS",
+                                    "title": "Marketplace: " + req.body.url,
+                                    "text": "",
+                                    "fields": fields,
+                                    "mrkdwn_in": "fields"
+                                }
+                            ]
+                        },function (data) {
+                            if(data.error) console.log(data.error);
+                        });
+                    }
                 });               
             });
         } else {
@@ -102,8 +156,46 @@ function scrap(jsonData,cb){
                     if (jsonData.regex){
                         obj = applyRegex(jsonData.regex,obj);
                     }
+                    for(var c = 0; c < keysInRecipe.length; c++){
+                        var count = 0;
+                        var b;
+                        if(!obj.hasOwnProperty(keysInRecipe[c])) {
+                            count++;
+                            errorsInKeys[keysInRecipe[c]] += count;
+                            if(errorsInKeys[keysInRecipe[c]] >= MAX_ERROR_COUNT_FOR_ARTICLE)
+                            {
+                                b = true;
+                            }
+                        }
+                    }
+                    if(bot && b){
+                        var fields = [];
+                        for (var property in errorsInKeys) {
+                            if (errorsInKeys.hasOwnProperty(property) && errorsInKeys[property] >= MAX_ERROR_COUNT_FOR_ARTICLE) {
+                                var field = {};
+                                field.value = 'Errores: ' + errorsInKeys[property];
+                                field.title = 'Propiedad: ' + property;
+                                fields.push(field);
+                            }
+                        }
+                        bot.postMessageToGroup('pulpou-notifications', "<@eliseoci>", {
+                            "attachments": [
+                                {
+                                    "fallback": "Info no capturada en receta.",
+                                    "color": 'danger',
+                                    "pretext":"Info no capturada en recipe article",
+                                    "title": "Marketplace: " + req.body.url,
+                                    "text": "",
+                                    "fields":fields,
+                                    "mrkdwn_in": "fields"
+                                }
+                            ]
+                        },function (data) {
+                            if(data.error) console.log(data.error);
+                        });
+                    }    
                 }
-                cb(err,obj);      
+                cb(err,obj);  
             });        
         }        
     }
