@@ -61,6 +61,7 @@ function applyRegex(regex,obj){ // Apply regular expressions to obj
 }
 
 function scrap(jsonData,cb){
+    console.log('scraping',jsonData.url);
     if(jsonData.bot_token){
         bot = new SlackBot({
              token: jsonData.bot_token,
@@ -72,6 +73,7 @@ function scrap(jsonData,cb){
     
     
     var doScrap = function(){
+      try{
         const MAX_ERROR_COUNT = 50;
         const MAX_ERROR_COUNT_FOR_ARTICLE = 1;
         
@@ -101,52 +103,56 @@ function scrap(jsonData,cb){
                     cb(err,data);
                 }
                 x(newUrl, jsonData.selector, [jsonData.recipe])(function(err, obj) {
-                    data=obj.map(function(d){return applyRegex(jsonData.regex,d)});
-                    cb(err,{data:data,next:next});
-                    var b;
-                    for(var a in data){
-                        for(var c = 0; c < keysInRecipe.length; c++){
-                            var count = 0;
-                            if(a != 'last'){
-                                if(!data[a].hasOwnProperty(keysInRecipe[c]))
-                                {
-                                    count++;
-                                    errorsInKeys[keysInRecipe[c]] += count;
-                                    if(errorsInKeys[keysInRecipe[c]] >= MAX_ERROR_COUNT)
-                                    {
-                                        b = true;
-                                    }
-
-                                }
-                            }
-                        }
+                    if (!err) {
+                        data=obj.map(function(d){return applyRegex(jsonData.regex,d)});                    
                     }
-                    if(bot && b)
-                    {
-                        var fields = [];
-                        for (var property in errorsInKeys) {
-                            if (errorsInKeys.hasOwnProperty(property) && errorsInKeys[property] >= MAX_ERROR_COUNT) {
-                                var field = {};
-                                field.value = 'Errores: ' + errorsInKeys[property];
-                                field.title = 'Propiedad: ' + property;
-                                fields.push(field);
+                    cb(err,{data:data,next:next});
+                    if (data) {
+                        var b;
+                        for(var a in data){
+                            for(var c = 0; c < keysInRecipe.length; c++){
+                                var count = 0;
+                                if(a != 'last'){
+                                    if(!data[a].hasOwnProperty(keysInRecipe[c]))
+                                    {
+                                        count++;
+                                        errorsInKeys[keysInRecipe[c]] += count;
+                                        if(errorsInKeys[keysInRecipe[c]] >= MAX_ERROR_COUNT)
+                                        {
+                                            b = true;
+                                        }
+
+                                    }
+                                }
                             }
                         }
-                        bot.postMessageToGroup('pulpou-notifications', "<@eliseoci>", {
-                            "attachments": [
-                                {
-                                    "fallback": "Info no capturada en receta.",
-                                    "color": 'danger',
-                                    "pretext":"Info no capturada en recipe LS",
-                                    "title": "Marketplace: " + req.body.url,
-                                    "text": "",
-                                    "fields": fields,
-                                    "mrkdwn_in": "fields"
+                        if(bot && b)
+                        {
+                            var fields = [];
+                            for (var property in errorsInKeys) {
+                                if (errorsInKeys.hasOwnProperty(property) && errorsInKeys[property] >= MAX_ERROR_COUNT) {
+                                    var field = {};
+                                    field.value = 'Errores: ' + errorsInKeys[property];
+                                    field.title = 'Propiedad: ' + property;
+                                    fields.push(field);
                                 }
-                            ]
-                        },function (data) {
-                            if(data.error) console.log(data.error);
-                        });
+                            }
+                            bot.postMessageToGroup('pulpou-notifications', "<@eliseoci>", {
+                                "attachments": [
+                                    {
+                                        "fallback": "Info no capturada en receta.",
+                                        "color": 'danger',
+                                        "pretext":"Info no capturada en recipe LS",
+                                        "title": "Marketplace: " + req.body.url,
+                                        "text": "",
+                                        "fields": fields,
+                                        "mrkdwn_in": "fields"
+                                    }
+                                ]
+                            },function (data) {
+                                if(data.error) console.log(data.error);
+                            });
+                        }   
                     }
                 });               
             });
@@ -197,7 +203,27 @@ function scrap(jsonData,cb){
                 }
                 cb(err,obj);  
             });        
-        }        
+        }
+      } catch(e){
+        // Error inesperado en el scrapeo.
+        if (bot){
+            // Send error to slackbot 
+            bot.postMessageToGroup('pulpou-notifications', "<@eliseoci>", {
+                "attachments": [
+                    {
+                        "fallback": "Error generar en XRay scraper.",
+                        "color": 'danger',
+                        "pretext":"Un error inesperado en el procesamiento de receta",
+                        "title": "URL: " + newUrl,
+                        "recipe": jsonData
+                    }
+                ]
+            },function (data) {
+                if(data.error) console.log(data.error);
+            });          
+            
+        }
+      }        
     }
     
     // if wait flag call nightmarejs to get html source with ajax/interaction

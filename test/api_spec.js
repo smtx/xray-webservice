@@ -152,6 +152,9 @@ describe ('JSON Recipes', function(){
             res.body.data[0].seller.should.be.an('object');
             res.body.data[0].seller.name.should.be.equal("Juan Perez");
             res.body.data[0].seller.city.should.be.equal("Córdoba");
+            res.body.should.have.property('next');
+            res.body.next.should.be.a('string');
+            res.body.next.should.be.equal('http://localhost/static.html?page=2');
             done();
           });
       });
