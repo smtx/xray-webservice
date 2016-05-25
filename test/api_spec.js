@@ -1,6 +1,7 @@
 
 var url       = 'http://localhost:8889/static.html';
-var url2      = 'http://localhost:8889/static.iso8859.html';
+var url_page_2       = 'http://localhost:8889/static2.html';
+var url_latin      = 'http://localhost:8889/static.iso8859.html';
 var dynamic_url = 'http://localhost:8889/dynamic.html';
 
 var chai      = require('chai');
@@ -38,7 +39,7 @@ describe('Express server is working when...', function(){
           res.should.have.status(404);
           done();
         });
-    });  
+    });
 });
 describe ('JSON Recipes', function(){
   describe('are valid when', function() {
@@ -70,7 +71,7 @@ describe ('JSON Recipes', function(){
       it('get data with correct charset', function(done){
         chai.request(server)
           .post('/')
-          .send({'url': url2, 'recipe': 'title', 'charset': 'iso8859-15'})
+          .send({'url': url_latin, 'recipe': 'title', 'charset': 'iso8859-15'})
           .end(function(err, res){
             res.should.have.status(200);
             res.should.be.json;
@@ -82,8 +83,8 @@ describe ('JSON Recipes', function(){
       it('get json with nested data with correct charset and using regex', function(done){
         chai.request(server)
           .post('/')
-          .send({ 
-            "url": url2,
+          .send({
+            "url": url_latin,
             "recipe": {
                 "title":"section#article h3",
                 "image":"section#article img@src",
@@ -119,7 +120,7 @@ describe ('JSON Recipes', function(){
       it('get data as array', function(done){
         chai.request(server)
           .post('/')
-          .send({ 
+          .send({
               "url": url,
               "recipe": {
                 "title":"div.items-info h3",
@@ -158,11 +159,51 @@ describe ('JSON Recipes', function(){
             done();
           });
       });
+      it('should not get next page if its URL is the same', function(done){
+        chai.request(server)
+          .post('/')
+          .send({
+              "url": url_page_2,
+              "recipe": {
+                "title":"div.items-info h3",
+                "image":"figure.items-image img@data-original",
+                "price":"p.items-price",
+                "permalink":"a@href",
+                "seller":{
+                    "name": "a.seller p:nth-child(1)",
+                    "city": "a.seller p:last-child"
+                }
+              },
+              "paginate": "footer section#pagination a.next@href",
+              "selector": "ul li.item",
+              "limit": 1,
+              "regex": {
+                  "price":"(\\d+,?\\d*\\.?\\d*)",
+                  "seller.name":"Vendedor: (.+)",
+                  "seller.city":"Ciudad: (.+)"
+              }
+          })
+          .end(function(err, res){
+            res.should.have.status(200);
+            res.should.be.json;
+            res.body.should.be.an('object');
+            res.body.data.should.be.an('array');
+            res.body.data.length.should.be.equal(3);
+            res.body.data[0].title.should.be.equal('IPAD MINI 16gb SILVER IMPECABLE CONDICION');
+            res.body.data[0].image.should.be.equal('http://lorempixel.com/135/180/');
+            should.exist(res.body.data[0].seller);
+            res.body.data[0].seller.should.be.an('object');
+            res.body.data[0].seller.name.should.be.equal("Juan Perez");
+            res.body.data[0].seller.city.should.be.equal("Córdoba");
+            res.body.should.not.have.property('next');
+            done();
+          });
+      })
       it('get transform data with regex', function(done){
         chai.request(server)
           .post('/')
-          .send({ 
-            "url": url2,
+          .send({
+            "url": url_latin,
             "recipe": {
               "title":"div.items-info h3",
               "image":"figure.items-image img@data-original",
@@ -196,13 +237,13 @@ describe ('JSON Recipes', function(){
             res.body.data[0].seller.should.be.an('object');
             res.body.data[0].seller.name.should.be.equal("Juan Perez");
             res.body.data[0].seller.city.should.be.equal("Códoba");
-            done();        
+            done();
         });
       });
       it('not get ajax data without wait', function(done){
         chai.request(server)
           .post('/')
-          .send({ 
+          .send({
             "url": dynamic_url,
             "recipe": {
               "title":"div.items-info h3",
@@ -229,13 +270,13 @@ describe ('JSON Recipes', function(){
             res.body.should.be.an('object');
             res.body.data.should.be.an('array');
             res.body.data.length.should.be.equal(0);
-            done();        
-        });        
+            done();
+        });
       });
       xit('get ajax data', function(done){
         chai.request(server)
           .post('/')
-          .send({ 
+          .send({
             "url": dynamic_url,
             "recipe": {
               "title":"div.items-info h3",
@@ -264,8 +305,8 @@ describe ('JSON Recipes', function(){
             res.body.should.be.an('object');
             res.body.data.should.be.an('array');
             res.body.data.length.should.be.equal(3);
-            done();        
-        });        
+            done();
+        });
       });
       it('get data from XML document');
     });

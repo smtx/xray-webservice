@@ -4,6 +4,7 @@
   "description": "XRay API with Docker support",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "./node_modules/.bin/mocha --reporter spec",
     "watch": "mocha --watch"
   },
@@ -28,6 +29,7 @@
     "express": "^4.13.4",
     "slackbots": "^0.5.1",
     "superagent-charset": "^1.0.0",
+    "urijs": "^1.18.0",
     "x-ray": "^2.3.0"
   }
 }

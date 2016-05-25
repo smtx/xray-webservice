@@ -18,36 +18,36 @@ if (!Array.prototype.last){
 };
 
 function applyRegex(regex,obj){ // Apply regular expressions to obj
-    if (typeof obj == 'string'){ 
+    if (typeof obj == 'string'){
         // Apply single regexp if obj is a string
         obj = setRegex(obj,regex);
     } else {
         if (obj){
-            Object.keys(obj).forEach(function(k){                
-                if (typeof obj[k] == 'string'){ 
-                    obj[k] = setRegex(obj[k],regex[k]);                            
+            Object.keys(obj).forEach(function(k){
+                if (typeof obj[k] == 'string'){
+                    obj[k] = setRegex(obj[k],regex[k]);
                 } else {
                     // apply regexp to array or object
                     Object.keys(obj[k]).forEach(function(n){
                         if( regex[k+'.'+n] ){
                             // apply regexp to nested object
-                            obj[k][n] = setRegex(obj[k][n],regex[k+'.'+n]);                                                                                    
+                            obj[k][n] = setRegex(obj[k][n],regex[k+'.'+n]);
                         } else {
                             // apply regexp to array element
-                            obj[k][n] = setRegex(obj[k][n],regex[k]);                                        
+                            obj[k][n] = setRegex(obj[k][n],regex[k]);
                         }
                     });
                 }
             });
         }
     }
-    
+
     return obj;
-    
+
     function setRegex(obj,regex){
         if (!regex){
-        return obj;  
-        } 
+        return obj;
+        }
         var data = obj;
         // assign first match of regex if possible, zero if no match
         if (arrMatches = data.match(regex)){
@@ -66,23 +66,26 @@ function scrap(jsonData,cb){
         bot = new SlackBot({
              token: jsonData.bot_token,
              name: 'Recipes Bot'
-        });       
+        });
     }
-    
+
     newUrl = jsonData.url;
-    
-    
+
+
+
+
     var doScrap = function(){
       try{
         const MAX_ERROR_COUNT = 50;
         const MAX_ERROR_COUNT_FOR_ARTICLE = 1;
-        
+        const URI = require('urijs');
+
          var errorsInKeys = JSON.parse(JSON.stringify(jsonData.recipe));
          var keysInRecipe = Object.keys(jsonData.recipe);
          for(var prop in errorsInKeys){
              errorsInKeys[prop] = 0;
          }
-        
+
         // if xml flag exists, switch cheerio to admit XML special elements CDATA, etc.
         if (jsonData.xml){
             cheerio.prototype.options.xmlMode = true;
@@ -102,11 +105,19 @@ function scrap(jsonData,cb){
                 if (err){
                     cb(err,data);
                 }
+                console.log('newUrl',newUrl);
+                console.log('next',next);
+                if (next){
+                  next = URI(newUrl).equals(next) === true ? '' : next;                  
+                }
+                console.log('next',next);
                 x(newUrl, jsonData.selector, [jsonData.recipe])(function(err, obj) {
                     if (!err) {
-                        data=obj.map(function(d){return applyRegex(jsonData.regex,d)});                    
+                        data=obj.map(function(d){return applyRegex(jsonData.regex,d)});
                     }
-                    cb(err,{data:data,next:next});
+                    var result = {data:data};
+                    if (next) result.next = next;
+                    cb(err,result);
                     if (data) {
                         var b;
                         for(var a in data){
@@ -152,9 +163,9 @@ function scrap(jsonData,cb){
                             },function (data) {
                                 if(data.error) console.log(data.error);
                             });
-                        }   
+                        }
                     }
-                });               
+                });
             });
         } else {
             x(newUrl,jsonData.recipe)(function(err,obj){
@@ -199,15 +210,15 @@ function scrap(jsonData,cb){
                         },function (data) {
                             if(data.error) console.log(data.error);
                         });
-                    }    
+                    }
                 }
-                cb(err,obj);  
-            });        
+                cb(err,obj);
+            });
         }
       } catch(e){
         // Error inesperado en el scrapeo.
         if (bot){
-            // Send error to slackbot 
+            // Send error to slackbot
             bot.postMessageToGroup('pulpou-notifications', "<@eliseoci>", {
                 "attachments": [
                     {
@@ -220,17 +231,17 @@ function scrap(jsonData,cb){
                 ]
             },function (data) {
                 if(data.error) console.log(data.error);
-            });          
-            
+            });
+
         }
-      }        
+      }
     }
-    
+
     // if wait flag call nightmarejs to get html source with ajax/interaction
     if (jsonData.nightmare) {
         var request = require("request");
-        var options = { 
-                method: 'POST', 
+        var options = {
+                method: 'POST',
                 url: jsonData.nightmare.url,
                 headers: {
                     'cache-control': 'no-cache',
@@ -242,7 +253,7 @@ function scrap(jsonData,cb){
                 },
                 json: true
             }
-        
+
         request(options,function (err, response,body){
             if (err){
                 throw new Error(err);
@@ -250,13 +261,13 @@ function scrap(jsonData,cb){
                 newUrl = body;
                 doScrap();
             }
-                
+
         });
     } else {
         doScrap();
     }
-    
-    
+
+
 
 }
 
