@@ -116,8 +116,8 @@ describe ('JSON Recipes', function(){
       });
 
     });
-    describe('get array data with regex', function(){
-      it('get data as array', function(done){
+    describe('get array data', function(){
+      it('get data as array with regex', function(done){
         chai.request(server)
           .post('/')
           .send({
@@ -153,6 +153,44 @@ describe ('JSON Recipes', function(){
             res.body.data[0].seller.should.be.an('object');
             res.body.data[0].seller.name.should.be.equal("Juan Perez");
             res.body.data[0].seller.city.should.be.equal("Córdoba");
+            res.body.should.have.property('next');
+            res.body.next.should.be.a('string');
+            res.body.next.should.be.equal('http://localhost/static.html?page=2');
+            done();
+          });
+      });
+      it('get data as array without regex', function(done){
+        chai.request(server)
+          .post('/')
+          .send({
+              "url": url,
+              "recipe": {
+                "title":"div.items-info h3",
+                "image":"figure.items-image img@data-original",
+                "price":"p.items-price",
+                "permalink":"a@href",
+                "seller":{
+                    "name": "a.seller p:nth-child(1)",
+                    "city": "a.seller p:last-child"
+                }
+              },
+              "paginate": "footer section#pagination a.next@href",
+              "selector": "ul li.item",
+              "limit": 1
+          })
+          .end(function(err, res){
+            res.should.have.status(200);
+            res.should.be.json;
+            res.body.should.be.an('object');
+            res.body.should.have.property('data');
+            res.body.data.should.be.an('array');
+            res.body.data.length.should.be.equal(3);
+            res.body.data[0].title.should.be.equal('IPAD MINI 16gb SILVER IMPECABLE CONDICION');
+            res.body.data[0].image.should.be.equal('http://lorempixel.com/135/180/');
+            should.exist(res.body.data[0].seller);
+            res.body.data[0].seller.should.be.an('object');
+            res.body.data[0].seller.name.should.be.equal("Vendedor: Juan Perez");
+            res.body.data[0].seller.city.should.be.equal("Ciudad: Córdoba");
             res.body.should.have.property('next');
             res.body.next.should.be.a('string');
             res.body.next.should.be.equal('http://localhost/static.html?page=2');

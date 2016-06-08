@@ -74,7 +74,7 @@ function scrap(jsonData,cb){
 
 
 
-    var doScrap = function(){
+    var doScrap = function(cb){
       try{
         const MAX_ERROR_COUNT = 50;
         const MAX_ERROR_COUNT_FOR_ARTICLE = 1;
@@ -108,15 +108,15 @@ function scrap(jsonData,cb){
                 console.log('newUrl',newUrl);
                 console.log('next',next);
                 if (next){
-                  next = URI(newUrl).equals(next) === true ? '' : next;                  
+                  next = URI(newUrl).equals(next) === true ? '' : next;
                 }
                 console.log('next',next);
-                x(newUrl, jsonData.selector, [jsonData.recipe])(function(err, obj) {
+                x(newUrl, jsonData.selector, [jsonData.recipe]).paginate(jsonData.paginate).limit(jsonData.limit || 1)(function(err, obj) {
                     if (!err) {
-                        data=obj.map(function(d){return applyRegex(jsonData.regex,d)});
+                        data=obj.map(function(d){return jsonData.regex ? applyRegex(jsonData.regex,d) : d});
                     }
                     var result = {data:data};
-                    if (next) result.next = next;
+                    if (next && (!jsonData.limit || jsonData.limit == 1)) result.next = next;
                     cb(err,result);
                     if (data) {
                         var b;
@@ -259,12 +259,12 @@ function scrap(jsonData,cb){
                 throw new Error(err);
             } else {
                 newUrl = body;
-                doScrap();
+                doScrap(cb);
             }
 
         });
     } else {
-        doScrap();
+        doScrap(cb);
     }
 
 
